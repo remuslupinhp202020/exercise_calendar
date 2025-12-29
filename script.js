@@ -9,14 +9,21 @@ const monthDisplay = document.getElementById('month-display');
 const modal = document.getElementById('event-modal');
 
 // --- ICONS & TYPES ---
-function getEventInfo(activity) {
+// Updated function accepts 'phase' as a second argument
+function getEventInfo(activity, phase) {
     let icon = '';
     let type = 'workout'; 
     
     const act = (activity || '').toLowerCase();
+    const ph = (phase || '').toLowerCase();
     
     if (act.includes('treadmill')) {
-        icon = '🏃‍♂️';
+        // LOGIC: If it's "Boring" -> Running Man. Otherwise (Level Up/Intense) -> Fire.
+        if (ph.includes('boring')) {
+            icon = '🏃‍♂️'; 
+        } else {
+            icon = '🔥'; 
+        }
         type = 'workout';
     } else if (act.includes('outing')) {
         icon = '🎉';
