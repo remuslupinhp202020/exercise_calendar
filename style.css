@@ -134,6 +134,12 @@ h2 { margin: 0; font-size: 1.6rem; color: var(--text-primary); font-weight: 800;
     border: none;
 }
 
+/* ADD THIS RULE: */
+.day-workout.boring-phase {
+    background-color: #66bb6a; /* A lighter, fresh green */
+    border-color: #66bb6a;
+}
+
 .day-rest {
     background-color: var(--bg-rest);
     color: var(--tx-rest);
