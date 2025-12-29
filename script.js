@@ -1,6 +1,6 @@
 // CONFIGURATION
 const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS_ZA05pfAt7Jhi6utZG0ldfiIl6w-FUpgRmeR8vmeuvOaY8lBA9BLYYhSNee_n0I48L4CLPAULuZTR/pub?gid=2062191702&single=true&output=csv';
-const PLAN_YEAR = 2026; // Ensure this matches your schedule year
+const PLAN_YEAR = 2026; 
 
 let events = [];
 let nav = 0; 
@@ -11,27 +11,34 @@ const modal = document.getElementById('event-modal');
 // --- EMOJI & STYLE MAPPING ---
 function getEventStyle(activity, phase) {
     let icon = '';
-    let styleClass = '';
+    let styleClass = ''; // Default to empty string
     
-    // Safety check for empty values
     const act = (activity || '').toLowerCase();
     const ph = (phase || '').toLowerCase();
     
+    // Activity Icons
     if (act.includes('treadmill')) icon = '🏃‍♂️';
     else if (act.includes('outing')) icon = '🎉';
     else if (act.includes('rest')) icon = '🛌';
     else icon = '🔹';
 
+    // Phase Styles
     let phaseIcon = '';
     if (ph.includes('boring')) {
         styleClass = 'phase-boring'; 
         phaseIcon = '⏳';
-    } else if (ph.includes('level up') || ph.includes('solidify')) {
+    } else if (ph.includes('level up') || ph.includes('solidify') || ph.includes('endurance')) {
         styleClass = 'phase-intense'; 
         phaseIcon = '🔥';
-    } else if (ph.includes('reset')) {
+    } else if (ph.includes('reset') || ph.includes('period rest')) {
         styleClass = 'phase-reset'; 
         phaseIcon = '🌱';
+    } else if (ph.includes('maintenance')) {
+        styleClass = 'phase-maint';
+        phaseIcon = '🔧';
+    } else if (ph.includes('spring')) {
+        styleClass = 'phase-maint'; // Reusing maintenance style for spring
+        phaseIcon = '☀️';
     }
 
     return { icon, phaseIcon, styleClass };
@@ -45,39 +52,33 @@ async function loadData() {
         const rows = parseCSV(text);
         
         if (rows.length < 2) {
-            alert("Error: No data found in CSV.");
+            console.warn("CSV has no data rows");
             return;
         }
 
         // --- SMART COLUMN DETECTION ---
-        // We look at the first row (Header) to find which index holds which data
         const headers = rows[0].map(h => h.toLowerCase());
         const idxPhase = headers.findIndex(h => h.includes('phase'));
-        const idxDate = headers.findIndex(h => h.includes('date')); // Matches "Date Range"
+        const idxDate = headers.findIndex(h => h.includes('date')); 
         const idxAct = headers.findIndex(h => h.includes('activity'));
         const idxSpeed = headers.findIndex(h => h.includes('speed'));
         const idxDur = headers.findIndex(h => h.includes('duration'));
         const idxNote = headers.findIndex(h => h.includes('strategy'));
 
         if (idxDate === -1 || idxAct === -1) {
-            console.error("Columns Found:", headers);
-            alert("Error: Could not find 'Date' or 'Activity' columns. Check your Sheet headers.");
+            alert("Error: Could not find 'Date' or 'Activity' columns.");
             return;
         }
 
         events = [];
         
-        // Loop starting from Row 1 (skipping header Row 0)
         for (let i = 1; i < rows.length; i++) {
             const row = rows[i];
-            
-            // Skip empty rows
             if (row.length < 2) continue;
 
             const dateRangeStr = row[idxDate];
             if (!dateRangeStr) continue;
 
-            // Expand "Dec 30 - Jan 3" into list of dates
             const dateList = expandDateRange(dateRangeStr);
 
             dateList.forEach(dateStr => {
@@ -92,7 +93,7 @@ async function loadData() {
             });
         }
 
-        // Calculate Navigation Start (Jump to Jan 2026)
+        // Jump to Jan 2026
         const today = new Date();
         const diffYears = PLAN_YEAR - today.getFullYear();
         nav = (diffYears * 12) + (0 - today.getMonth()); 
@@ -101,7 +102,7 @@ async function loadData() {
 
     } catch (e) {
         console.error("Critical Error:", e);
-        calendar.innerHTML = `<p style="color:red; text-align:center;">Error loading data: ${e.message}</p>`;
+        calendar.innerHTML = `<p style="color:red; text-align:center;">${e.message}</p>`;
     }
 }
 
@@ -126,11 +127,9 @@ function parseCSV(text) {
 function expandDateRange(rawStr) {
     try {
         const cleanStr = rawStr.replace(/\([^\)]+\)/g, '').trim(); 
-        
         const parsePart = (str) => {
             if(!str) return new Date();
             const d = new Date(`${str} ${PLAN_YEAR}`);
-            // If month is Dec but we are planning for Jan/Feb, it's likely previous year
             if (str.trim().startsWith("Dec")) {
                 d.setFullYear(PLAN_YEAR - 1);
             }
@@ -157,7 +156,6 @@ function expandDateRange(rawStr) {
         }
         return resultDates;
     } catch (err) {
-        console.warn("Date parse error for:", rawStr, err);
         return [];
     }
 }
@@ -194,14 +192,18 @@ function renderCalendar() {
         dayNum.classList.add('day-label');
         daySquare.appendChild(dayNum);
 
-        // Find all events for this day
         const dayEvents = events.filter(e => e.date === dayString);
 
         dayEvents.forEach(eventData => {
             const { icon, phaseIcon, styleClass } = getEventStyle(eventData.activity, eventData.phase);
             
             const eventDiv = document.createElement('div');
-            eventDiv.classList.add('event', styleClass);
+            eventDiv.classList.add('event'); // Always add base class
+            
+            // FIX: Only add styleClass if it is not empty
+            if (styleClass) {
+                eventDiv.classList.add(styleClass);
+            }
             
             if((eventData.activity||'').toLowerCase().includes('rest')) eventDiv.classList.add('evt-rest');
             else if ((eventData.activity||'').toLowerCase().includes('outing')) eventDiv.classList.add('evt-outing');
@@ -217,7 +219,7 @@ function renderCalendar() {
     }
 }
 
-// 5. Modal Logic
+// 5. Modal
 function openModal(data, dateStr) {
     document.getElementById('modal-date').innerText = new Date(dateStr).toDateString();
     document.getElementById('m-phase').innerText = data.phase;
