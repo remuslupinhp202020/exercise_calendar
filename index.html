@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exercise Schedule</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Optional: Google Font for better styling later -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Exercise Schedule</h1>
+            <!-- Your Google Form Link -->
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLSf0kgx8-_peGyb-uBnv-DFlF6B-PNqlqg7KIKjxq69WxrfudQ/viewform" target="_blank" class="add-btn">
+                + Add New Entry
+            </a>
+        </header>
+
+        <div class="table-container">
+            <table id="data-table">
+                <thead>
+                    <tr>
+                        <!-- These headers match your CSV columns -->
+                        <th data-column="0">Phase</th>
+                        <th data-column="1">Date Range</th>
+                        <th data-column="2">Activity</th>
+                        <th data-column="3">Speed</th>
+                        <th data-column="4">Duration</th>
+                        <th data-column="5">Strategy, Fuel & Notes</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <!-- Data will be injected here by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
