@@ -9,9 +9,9 @@ const monthDisplay = document.getElementById('month-display');
 const modal = document.getElementById('event-modal');
 
 // --- ICONS & TYPES ---
-function getEventInfo(activity, phase) {
+function getEventInfo(activity) {
     let icon = '';
-    let type = 'workout'; // default
+    let type = 'workout'; 
     
     const act = (activity || '').toLowerCase();
     
@@ -39,7 +39,10 @@ async function loadData() {
         const text = await response.text();
         const rows = parseCSV(text);
         
-        if (rows.length < 2) return;
+        if (rows.length < 2) {
+            console.error("CSV empty");
+            return;
+        }
 
         // Auto-detect columns
         const headers = rows[0].map(h => h.toLowerCase());
@@ -51,7 +54,7 @@ async function loadData() {
         const idxNote = headers.findIndex(h => h.includes('strategy'));
 
         if (idxDate === -1 || idxAct === -1) {
-            alert("Error: Missing Date or Activity columns.");
+            alert("Error: Missing Date or Activity columns in Sheet.");
             return;
         }
 
@@ -86,6 +89,7 @@ async function loadData() {
 
     } catch (e) {
         console.error(e);
+        calendar.innerHTML = `<div style="text-align:center; padding:20px; color:red;">Error loading data. Check console.</div>`;
     }
 }
 
@@ -106,10 +110,19 @@ function parseCSV(text) {
     return result;
 }
 
-// 3. Date Parser
+// 3. Date Parser (FIXED TIMEZONE ISSUE)
 function expandDateRange(rawStr) {
     try {
         const cleanStr = rawStr.replace(/\([^\)]+\)/g, '').trim(); 
+        
+        // Helper: Create string YYYY-MM-DD manually to avoid Timezone shifts
+        const formatDate = (dateObj) => {
+            const y = dateObj.getFullYear();
+            const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const d = String(dateObj.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        };
+
         const parsePart = (str) => {
             if(!str) return new Date();
             const d = new Date(`${str} ${PLAN_YEAR}`);
@@ -129,16 +142,17 @@ function expandDateRange(rawStr) {
             if (start > end) start.setFullYear(PLAN_YEAR - 1);
 
             for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                resultDates.push(d.toISOString().split('T')[0]);
+                resultDates.push(formatDate(d));
             }
         } else {
             const d = parsePart(cleanStr);
             if (!isNaN(d)) {
-                resultDates.push(d.toISOString().split('T')[0]);
+                resultDates.push(formatDate(d));
             }
         }
         return resultDates;
     } catch (err) {
+        console.warn("Date Error", err);
         return [];
     }
 }
@@ -146,7 +160,7 @@ function expandDateRange(rawStr) {
 // 4. Render Calendar
 function renderCalendar() {
     const dt = new Date();
-    dt.setDate(1); // Fix Feb bug
+    dt.setDate(1); 
     dt.setMonth(new Date().getMonth() + nav);
 
     const month = dt.getMonth();
@@ -159,45 +173,39 @@ function renderCalendar() {
     monthDisplay.innerText = `${dt.toLocaleDateString('en-us', { month: 'long' })} ${year}`;
     calendar.innerHTML = '';
 
-    // Padding Days
+    // Padding
     for(let i = 0; i < paddingDays; i++) {
         const daySquare = document.createElement('div');
         daySquare.classList.add('day', 'padding');
         calendar.appendChild(daySquare);
     }
 
-    // Actual Days
+    // Days
     for(let i = 1; i <= daysInMonth; i++) {
         const daySquare = document.createElement('div');
         daySquare.classList.add('day');
         
-        const dayString = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+        // Construct YYYY-MM-DD manually to match expandDateRange
+        const currentMonthStr = String(month + 1).padStart(2, '0');
+        const currentDayStr = String(i).padStart(2, '0');
+        const dayString = `${year}-${currentMonthStr}-${currentDayStr}`;
         
-        // Find Event
         const eventData = events.find(e => e.date === dayString);
 
         if (eventData) {
-            // Apply Class to ENTIRE Day Block
             const { icon, type } = getEventInfo(eventData.activity);
             daySquare.classList.add(`day-${type}`); 
             daySquare.classList.add('has-event');
 
-            // --- HTML STRUCTURE ---
-            // 1. Date Number (Top Left)
-            // 2. Emoji (Top Right)
-            // 3. Details (Center)
-            
             let detailsHTML = '';
             
             if (type === 'workout') {
-                // Show Activity, Speed, Duration
                 detailsHTML = `
                     <div class="act-title">${eventData.activity}</div>
                     <div class="act-detail">${eventData.speed}</div>
                     <div class="act-detail">${eventData.duration}</div>
                 `;
             } else {
-                // REST or OUTING (Just Title)
                 detailsHTML = `
                     <div class="act-title" style="font-size:1rem; margin-top:5px;">${eventData.activity.toUpperCase()}</div>
                 `;
@@ -208,3 +216,33 @@ function renderCalendar() {
                 <div class="day-emoji">${icon}</div>
                 <div class="day-content">
                     ${detailsHTML}
+                </div>
+            `;
+            daySquare.addEventListener('click', () => openModal(eventData, dayString));
+
+        } else {
+            daySquare.innerHTML = `<div class="day-num">${i}</div>`;
+        }
+
+        calendar.appendChild(daySquare);
+    }
+}
+
+// 5. Modal
+function openModal(data, dateStr) {
+    document.getElementById('modal-date').innerText = new Date(dateStr).toDateString();
+    document.getElementById('m-phase').innerText = data.phase;
+    document.getElementById('m-activity').innerText = data.activity;
+    document.getElementById('m-speed').innerText = data.speed;
+    document.getElementById('m-duration').innerText = data.duration;
+    document.getElementById('m-notes').innerText = data.notes;
+    modal.classList.remove('hidden');
+}
+
+document.getElementById('close-modal').addEventListener('click', () => modal.classList.add('hidden'));
+window.onclick = function(event) { if (event.target == modal) modal.classList.add('hidden'); }
+
+document.getElementById('next-btn').addEventListener('click', () => { nav++; renderCalendar(); });
+document.getElementById('prev-btn').addEventListener('click', () => { nav--; renderCalendar(); });
+
+loadData();
