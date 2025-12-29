@@ -59,3 +59,54 @@ function renderTable(data) {
         tableBody.appendChild(tr);
     });
 }
+
+// 5. Sorting Logic
+const headers = document.querySelectorAll('th');
+let currentSortCol = -1;
+let isAscending = true;
+
+// Add click listeners to headers
+headers.forEach((header, index) => {
+    header.addEventListener('click', () => {
+        sortTable(index);
+    });
+});
+
+function sortTable(columnIndex) {
+    // Toggle direction if clicking the same column, otherwise reset to Ascending
+    if (currentSortCol === columnIndex) {
+        isAscending = !isAscending;
+    } else {
+        currentSortCol = columnIndex;
+        isAscending = true;
+    }
+
+    // Sort the global tableData array
+    tableData.sort((rowA, rowB) => {
+        // Safe check in case a row is shorter than expected
+        const cellA = (rowA[columnIndex] || '').toString().toLowerCase();
+        const cellB = (rowB[columnIndex] || '').toString().toLowerCase();
+
+        if (cellA < cellB) return isAscending ? -1 : 1;
+        if (cellA > cellB) return isAscending ? 1 : -1;
+        return 0;
+    });
+
+    // Update Header Visuals (Classes will be styled in Step 5)
+    updateHeaderStyles(columnIndex);
+
+    // Re-render the table with sorted data
+    renderTable(tableData);
+}
+
+function updateHeaderStyles(columnIndex) {
+    headers.forEach((th, idx) => {
+        // Remove existing sort classes
+        th.classList.remove('sort-asc', 'sort-desc');
+        
+        // Add class to the currently sorted header
+        if (idx === columnIndex) {
+            th.classList.add(isAscending ? 'sort-asc' : 'sort-desc');
+        }
+    });
+}
