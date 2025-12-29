@@ -7,19 +7,19 @@
     /* --- BLOCK COLORS --- */
     
     /* Difficult Workout: Dark Green */
-    --bg-workout: #2e7d32; 
+    --bg-workout: #5A7863; 
     --tx-workout: #ffffff;
 
     /* Easy Workout: Light Green (New) */
-    --bg-workout-easy: #81c784; 
+    --bg-workout-easy: #B8DB80; 
     --tx-workout-easy: #ffffff;
 
     /* Rest: Red */
-    --bg-rest: #d32f2f;    
+    --bg-rest: #F5AFAF;    
     --tx-rest: #ffffff;
 
     /* Outing: Blue */
-    --bg-outing: #1976d2;  
+    --bg-outing: #9CC6DB;  
     --tx-outing: #ffffff;
     
     --bg-empty: #ffffff;
