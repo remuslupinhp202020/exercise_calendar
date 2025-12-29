@@ -1,12 +1,48 @@
 // CONFIGURATION
 const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS_ZA05pfAt7Jhi6utZG0ldfiIl6w-FUpgRmeR8vmeuvOaY8lBA9BLYYhSNee_n0I48L4CLPAULuZTR/pub?gid=2062191702&single=true&output=csv';
 
+// CRITICAL: Set this to the year your schedule is built for (2026 based on your screenshot)
+const PLAN_YEAR = 2026; 
+
 let events = [];
-let nav = 0; // Tracks months from current date (0 = this month, 1 = next, etc.)
+let nav = 0; 
 let clicked = null;
 const calendar = document.getElementById('calendar-grid');
 const monthDisplay = document.getElementById('month-display');
 const modal = document.getElementById('event-modal');
+
+// --- EMOJI & STYLE MAPPING ---
+function getEventStyle(activity, phase) {
+    let icon = '';
+    let styleClass = '';
+    
+    // 1. Activity Icons
+    const act = activity.toLowerCase();
+    if (act.includes('treadmill')) icon = '🏃‍♂️';
+    else if (act.includes('outing')) icon = '🎉';
+    else if (act.includes('rest')) icon = '🛌';
+    else icon = '🔹';
+
+    // 2. Phase Styling (Add markers for phase types)
+    const ph = phase.toLowerCase();
+    let phaseIcon = '';
+    
+    if (ph.includes('boring')) {
+        styleClass = 'phase-boring'; // Gray/Muted
+        phaseIcon = '⏳';
+    } else if (ph.includes('level up') || ph.includes('solidify')) {
+        styleClass = 'phase-intense'; // Bright/Bold
+        phaseIcon = '🔥';
+    } else if (ph.includes('reset')) {
+        styleClass = 'phase-reset'; // Green/Calm
+        phaseIcon = '🌱';
+    } else if (ph.includes('maintenance')) {
+        styleClass = 'phase-maint';
+        phaseIcon = '🔧';
+    }
+
+    return { icon, phaseIcon, styleClass };
+}
 
 // 1. Fetch & Initialize
 async function loadData() {
@@ -15,22 +51,17 @@ async function loadData() {
         const text = await response.text();
         const rows = parseCSV(text);
         
-        // Process rows into event objects
-        // CSV Structure: [0]Timestamp, [1]Phase, [2]DateRange, [3]Activity, [4]Speed, [5]Duration, [6]Strategy
         events = [];
         
         rows.forEach(row => {
-            // Skip empty rows or header (if header wasn't removed by parseCSV check)
             if(row.length < 3 || row[1] === 'Phase') return;
 
-            const dateRangeStr = row[2]; // "Dec 30 - Jan 3" or "Jan 4 (Sun)"
-            
-            // Expand range into individual date strings (YYYY-MM-DD)
+            const dateRangeStr = row[2]; 
             const dateList = expandDateRange(dateRangeStr);
 
             dateList.forEach(dateStr => {
                 events.push({
-                    date: dateStr, // "2025-01-04"
+                    date: dateStr,
                     phase: row[1],
                     activity: row[3],
                     speed: row[4],
@@ -40,6 +71,12 @@ async function loadData() {
             });
         });
 
+        // Set initial view to January of the Plan Year
+        const today = new Date();
+        const diffYears = PLAN_YEAR - today.getFullYear();
+        // Adjust nav so the calendar opens on Jan 2026 immediately
+        nav = (diffYears * 12) + (0 - today.getMonth()); // 0 = Jan
+
         renderCalendar();
 
     } catch (e) {
@@ -47,11 +84,9 @@ async function loadData() {
     }
 }
 
-// 2. CSV Parser
 function parseCSV(text) {
     const lines = text.split(/\r?\n/);
     const result = [];
-    // Start from index 1 to skip header
     for (let i = 1; i < lines.length; i++) {
         if (!lines[i].trim()) continue;
         const regex = /(?:^|,)(?:"([^"]*)"|([^",]*))/g;
@@ -65,42 +100,40 @@ function parseCSV(text) {
     return result;
 }
 
-// 3. Date Parser (The Magic Logic)
+// 3. Date Parser (Fixed for 2026)
 function expandDateRange(rawStr) {
-    // Current assumption: Dates belong to current/next year context.
-    // Handles: "Dec 30 - Jan 3" OR "Jan 4 (Sun)"
-    const cleanStr = rawStr.replace(/\([^\)]+\)/g, '').trim(); // Remove (Sun)
-    const currentYear = new Date().getFullYear(); 
+    const cleanStr = rawStr.replace(/\([^\)]+\)/g, '').trim(); 
     
-    // Helper to make Date object from "Month Day"
+    // Helper to make Date object using PLAN_YEAR
     const parsePart = (str) => {
-        const d = new Date(`${str} ${currentYear}`);
-        // Logic to handle Year rollover (e.g. looking at Dec while in Jan)
-        // If the parsed date is more than 6 months away, assume it's slightly different year context
-        // specific to your needs, we'll keep it simple for now:
-        if (str.includes("Jan") && new Date().getMonth() > 6) d.setFullYear(currentYear + 1);
+        // Assume format is "Month Day" (e.g., "Dec 30")
+        const d = new Date(`${str} ${PLAN_YEAR}`);
+        
+        // Handle "Dec" dates belonging to the previous year (e.g. Dec 2025)
+        // If the parsed month is Dec and the row is generally about Jan/Feb, shift year back
+        // Simple heuristic: If string is Dec, make it PLAN_YEAR - 1
+        if (str.startsWith("Dec")) {
+            d.setFullYear(PLAN_YEAR - 1);
+        }
         return d;
     };
 
     const resultDates = [];
 
     if (cleanStr.includes("-")) {
-        // It's a range: "Dec 30 - Jan 3"
         const parts = cleanStr.split("-");
         let start = parsePart(parts[0].trim());
         let end = parsePart(parts[1].trim());
 
-        // Handle Dec -> Jan rollover explicitly
+        // Handle Dec 30 (2025) - Jan 3 (2026)
         if (start > end) {
-            end.setFullYear(start.getFullYear() + 1);
+            start.setFullYear(PLAN_YEAR - 1);
         }
 
-        // Loop from start to end
         for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
             resultDates.push(d.toISOString().split('T')[0]);
         }
     } else {
-        // Single date
         const d = parsePart(cleanStr);
         resultDates.push(d.toISOString().split('T')[0]);
     }
@@ -110,10 +143,7 @@ function expandDateRange(rawStr) {
 // 4. Render Calendar
 function renderCalendar() {
     const dt = new Date();
-    
-    if (nav !== 0) {
-        dt.setMonth(new Date().getMonth() + nav);
-    }
+    dt.setMonth(new Date().getMonth() + nav);
 
     const day = dt.getDate();
     const month = dt.getMonth();
@@ -121,60 +151,44 @@ function renderCalendar() {
 
     const firstDay = new Date(year, month, 1);
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    
-    const dateString = firstDay.toLocaleDateString('en-us', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'numeric',
-        day: 'numeric',
-    });
-    
-    const paddingDays = new Date(year, month, 1).getDay(); // 0 is Sunday
+    const paddingDays = new Date(year, month, 1).getDay();
 
     monthDisplay.innerText = `${dt.toLocaleDateString('en-us', { month: 'long' })} ${year}`;
     calendar.innerHTML = '';
 
-    // Empty boxes for days before start of month
     for(let i = 0; i < paddingDays; i++) {
         const daySquare = document.createElement('div');
         daySquare.classList.add('day', 'padding');
         calendar.appendChild(daySquare);
     }
 
-    // Actual days
     for(let i = 1; i <= daysInMonth; i++) {
         const daySquare = document.createElement('div');
         daySquare.classList.add('day');
         
         const dayString = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
         
-        // Date Number
         const dayNum = document.createElement('div');
         dayNum.innerText = i;
         dayNum.classList.add('day-label');
-        
-        // Highlight Today
-        const todayStr = new Date().toISOString().split('T')[0];
-        if (dayString === todayStr) dayNum.classList.add('today-circle');
-        
         daySquare.appendChild(dayNum);
 
-        // Find Event
         const eventForDay = events.find(e => e.date === dayString);
         if (eventForDay) {
-            const eventDiv = document.createElement('div');
-            eventDiv.classList.add('event');
-            eventDiv.innerText = eventForDay.activity;
-            
-            // Color Coding based on Activity text
-            if(eventForDay.activity.toLowerCase().includes('rest')) {
-                eventDiv.classList.add('evt-rest');
-            } else if (eventForDay.activity.toLowerCase().includes('outing')) {
-                eventDiv.classList.add('evt-outing');
-            } else {
-                eventDiv.classList.add('evt-workout');
-            }
+            // Get Styling and Icons
+            const { icon, phaseIcon, styleClass } = getEventStyle(eventForDay.activity, eventForDay.phase);
 
+            const eventDiv = document.createElement('div');
+            eventDiv.classList.add('event', styleClass);
+            
+            // Add Activity Class for base color (Rest vs Workout)
+            if(eventForDay.activity.toLowerCase().includes('rest')) eventDiv.classList.add('evt-rest');
+            else if (eventForDay.activity.toLowerCase().includes('outing')) eventDiv.classList.add('evt-outing');
+            else eventDiv.classList.add('evt-workout');
+
+            // HTML Content with Icons
+            eventDiv.innerHTML = `<span>${icon} ${eventForDay.activity}</span> <span class="phase-icon">${phaseIcon}</span>`;
+            
             eventDiv.addEventListener('click', () => openModal(eventForDay, dayString));
             daySquare.appendChild(eventDiv);
         }
@@ -191,31 +205,13 @@ function openModal(eventData, dateStr) {
     document.getElementById('m-speed').innerText = eventData.speed;
     document.getElementById('m-duration').innerText = eventData.duration;
     document.getElementById('m-notes').innerText = eventData.notes;
-    
     modal.classList.remove('hidden');
 }
 
-document.getElementById('close-modal').addEventListener('click', () => {
-    modal.classList.add('hidden');
-});
+document.getElementById('close-modal').addEventListener('click', () => modal.classList.add('hidden'));
+window.onclick = function(event) { if (event.target == modal) modal.classList.add('hidden'); }
 
-// Close modal on outside click
-window.onclick = function(event) {
-    if (event.target == modal) {
-        modal.classList.add('hidden');
-    }
-}
+document.getElementById('next-btn').addEventListener('click', () => { nav++; renderCalendar(); });
+document.getElementById('prev-btn').addEventListener('click', () => { nav--; renderCalendar(); });
 
-// 6. Buttons
-document.getElementById('next-btn').addEventListener('click', () => {
-    nav++;
-    renderCalendar();
-});
-
-document.getElementById('prev-btn').addEventListener('click', () => {
-    nav--;
-    renderCalendar();
-});
-
-// Init
 loadData();
