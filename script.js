@@ -10,6 +10,7 @@ const modal = document.getElementById('event-modal');
 
 // --- ICONS & TYPES ---
 // Updated function accepts 'phase' as a second argument
+// Updated function accepts 'phase' as a second argument
 function getEventInfo(activity, phase) {
     let icon = '';
     let type = 'workout'; 
@@ -26,10 +27,10 @@ function getEventInfo(activity, phase) {
         }
         type = 'workout';
     } else if (act.includes('outing')) {
-        icon = '🎉';
+        icon = '🍜';
         type = 'outing';
     } else if (act.includes('rest')) {
-        icon = '🛌';
+        icon = '💤';
         type = 'rest';
     } else {
         icon = '🔹';
