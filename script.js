@@ -18,7 +18,7 @@ function getEventStyle(activity, phase) {
     
     if (act.includes('treadmill')) icon = '🏃‍♂️';
     else if (act.includes('outing')) icon = '🎉';
-    else if (act.includes('rest')) icon = '🛌';
+    else if (act.includes('rest')) icon = '💤';
     else icon = '🔹';
 
     let phaseIcon = '';
@@ -30,7 +30,7 @@ function getEventStyle(activity, phase) {
         phaseIcon = '🔥';
     } else if (ph.includes('reset') || ph.includes('period rest')) {
         styleClass = 'phase-reset'; 
-        phaseIcon = '🌱';
+        phaseIcon = '🍜';
     } else if (ph.includes('maintenance')) {
         styleClass = 'phase-maint';
         phaseIcon = '🔧';
