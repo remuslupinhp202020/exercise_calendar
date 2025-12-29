@@ -11,18 +11,16 @@ const modal = document.getElementById('event-modal');
 // --- EMOJI & STYLE MAPPING ---
 function getEventStyle(activity, phase) {
     let icon = '';
-    let styleClass = ''; // Default to empty string
+    let styleClass = ''; 
     
     const act = (activity || '').toLowerCase();
     const ph = (phase || '').toLowerCase();
     
-    // Activity Icons
     if (act.includes('treadmill')) icon = '🏃‍♂️';
     else if (act.includes('outing')) icon = '🎉';
     else if (act.includes('rest')) icon = '🛌';
     else icon = '🔹';
 
-    // Phase Styles
     let phaseIcon = '';
     if (ph.includes('boring')) {
         styleClass = 'phase-boring'; 
@@ -37,7 +35,7 @@ function getEventStyle(activity, phase) {
         styleClass = 'phase-maint';
         phaseIcon = '🔧';
     } else if (ph.includes('spring')) {
-        styleClass = 'phase-maint'; // Reusing maintenance style for spring
+        styleClass = 'phase-maint';
         phaseIcon = '☀️';
     }
 
@@ -51,12 +49,8 @@ async function loadData() {
         const text = await response.text();
         const rows = parseCSV(text);
         
-        if (rows.length < 2) {
-            console.warn("CSV has no data rows");
-            return;
-        }
+        if (rows.length < 2) return;
 
-        // --- SMART COLUMN DETECTION ---
         const headers = rows[0].map(h => h.toLowerCase());
         const idxPhase = headers.findIndex(h => h.includes('phase'));
         const idxDate = headers.findIndex(h => h.includes('date')); 
@@ -66,7 +60,7 @@ async function loadData() {
         const idxNote = headers.findIndex(h => h.includes('strategy'));
 
         if (idxDate === -1 || idxAct === -1) {
-            alert("Error: Could not find 'Date' or 'Activity' columns.");
+            alert("Error: Missing columns.");
             return;
         }
 
@@ -93,7 +87,6 @@ async function loadData() {
             });
         }
 
-        // Jump to Jan 2026
         const today = new Date();
         const diffYears = PLAN_YEAR - today.getFullYear();
         nav = (diffYears * 12) + (0 - today.getMonth()); 
@@ -102,7 +95,6 @@ async function loadData() {
 
     } catch (e) {
         console.error("Critical Error:", e);
-        calendar.innerHTML = `<p style="color:red; text-align:center;">${e.message}</p>`;
     }
 }
 
@@ -160,9 +152,13 @@ function expandDateRange(rawStr) {
     }
 }
 
-// 4. Render Calendar
+// 4. Render Calendar (FIXED "NO FEBRUARY" BUG)
 function renderCalendar() {
     const dt = new Date();
+    
+    // BUG FIX: Set date to the 1st of the month BEFORE switching months.
+    // Otherwise, if today is Dec 30, shifting to Feb (28 days) forces it to March.
+    dt.setDate(1); 
     dt.setMonth(new Date().getMonth() + nav);
 
     const month = dt.getMonth();
@@ -198,12 +194,9 @@ function renderCalendar() {
             const { icon, phaseIcon, styleClass } = getEventStyle(eventData.activity, eventData.phase);
             
             const eventDiv = document.createElement('div');
-            eventDiv.classList.add('event'); // Always add base class
+            eventDiv.classList.add('event');
             
-            // FIX: Only add styleClass if it is not empty
-            if (styleClass) {
-                eventDiv.classList.add(styleClass);
-            }
+            if (styleClass) eventDiv.classList.add(styleClass);
             
             if((eventData.activity||'').toLowerCase().includes('rest')) eventDiv.classList.add('evt-rest');
             else if ((eventData.activity||'').toLowerCase().includes('outing')) eventDiv.classList.add('evt-outing');
