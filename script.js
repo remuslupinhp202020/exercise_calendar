@@ -196,7 +196,9 @@ function renderCalendar() {
             const { icon, type } = getEventInfo(eventData.activity);
             daySquare.classList.add(`day-${type}`); 
             daySquare.classList.add('has-event');
-
+        if (eventData.phase.toLowerCase().includes('boring')) {
+                daySquare.classList.add('boring-phase');
+            }
             let detailsHTML = '';
             
             if (type === 'workout') {
