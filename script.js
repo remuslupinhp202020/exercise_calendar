@@ -8,41 +8,31 @@ const calendar = document.getElementById('calendar-grid');
 const monthDisplay = document.getElementById('month-display');
 const modal = document.getElementById('event-modal');
 
-// --- EMOJI & STYLE MAPPING ---
-function getEventStyle(activity, phase) {
+// --- ICONS & TYPES ---
+function getEventInfo(activity, phase) {
     let icon = '';
-    let styleClass = ''; 
+    let type = 'workout'; // default
     
     const act = (activity || '').toLowerCase();
-    const ph = (phase || '').toLowerCase();
     
-    if (act.includes('treadmill')) icon = '🏃‍♂️';
-    else if (act.includes('outing')) icon = '🎉';
-    else if (act.includes('rest')) icon = '💤';
-    else icon = '🔹';
-
-    let phaseIcon = '';
-    if (ph.includes('boring')) {
-        styleClass = 'phase-boring'; 
-        phaseIcon = '⏳';
-    } else if (ph.includes('level up') || ph.includes('solidify') || ph.includes('endurance')) {
-        styleClass = 'phase-intense'; 
-        phaseIcon = '🔥';
-    } else if (ph.includes('reset') || ph.includes('period rest')) {
-        styleClass = 'phase-reset'; 
-        phaseIcon = '🍜';
-    } else if (ph.includes('maintenance')) {
-        styleClass = 'phase-maint';
-        phaseIcon = '🔧';
-    } else if (ph.includes('spring')) {
-        styleClass = 'phase-maint';
-        phaseIcon = '☀️';
+    if (act.includes('treadmill')) {
+        icon = '🏃‍♂️';
+        type = 'workout';
+    } else if (act.includes('outing')) {
+        icon = '🎉';
+        type = 'outing';
+    } else if (act.includes('rest')) {
+        icon = '🛌';
+        type = 'rest';
+    } else {
+        icon = '🔹';
+        type = 'workout';
     }
 
-    return { icon, phaseIcon, styleClass };
+    return { icon, type };
 }
 
-// 1. Fetch & Initialize
+// 1. Fetch
 async function loadData() {
     try {
         const response = await fetch(CSV_URL);
@@ -51,6 +41,7 @@ async function loadData() {
         
         if (rows.length < 2) return;
 
+        // Auto-detect columns
         const headers = rows[0].map(h => h.toLowerCase());
         const idxPhase = headers.findIndex(h => h.includes('phase'));
         const idxDate = headers.findIndex(h => h.includes('date')); 
@@ -60,7 +51,7 @@ async function loadData() {
         const idxNote = headers.findIndex(h => h.includes('strategy'));
 
         if (idxDate === -1 || idxAct === -1) {
-            alert("Error: Missing columns.");
+            alert("Error: Missing Date or Activity columns.");
             return;
         }
 
@@ -94,7 +85,7 @@ async function loadData() {
         renderCalendar();
 
     } catch (e) {
-        console.error("Critical Error:", e);
+        console.error(e);
     }
 }
 
@@ -152,13 +143,10 @@ function expandDateRange(rawStr) {
     }
 }
 
-// 4. Render Calendar (FIXED "NO FEBRUARY" BUG)
+// 4. Render Calendar
 function renderCalendar() {
     const dt = new Date();
-    
-    // BUG FIX: Set date to the 1st of the month BEFORE switching months.
-    // Otherwise, if today is Dec 30, shifting to Feb (28 days) forces it to March.
-    dt.setDate(1); 
+    dt.setDate(1); // Fix Feb bug
     dt.setMonth(new Date().getMonth() + nav);
 
     const month = dt.getMonth();
@@ -171,62 +159,52 @@ function renderCalendar() {
     monthDisplay.innerText = `${dt.toLocaleDateString('en-us', { month: 'long' })} ${year}`;
     calendar.innerHTML = '';
 
+    // Padding Days
     for(let i = 0; i < paddingDays; i++) {
         const daySquare = document.createElement('div');
         daySquare.classList.add('day', 'padding');
         calendar.appendChild(daySquare);
     }
 
+    // Actual Days
     for(let i = 1; i <= daysInMonth; i++) {
         const daySquare = document.createElement('div');
         daySquare.classList.add('day');
         
         const dayString = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
         
-        const dayNum = document.createElement('div');
-        dayNum.innerText = i;
-        dayNum.classList.add('day-label');
-        daySquare.appendChild(dayNum);
+        // Find Event
+        const eventData = events.find(e => e.date === dayString);
 
-        const dayEvents = events.filter(e => e.date === dayString);
+        if (eventData) {
+            // Apply Class to ENTIRE Day Block
+            const { icon, type } = getEventInfo(eventData.activity);
+            daySquare.classList.add(`day-${type}`); 
+            daySquare.classList.add('has-event');
 
-        dayEvents.forEach(eventData => {
-            const { icon, phaseIcon, styleClass } = getEventStyle(eventData.activity, eventData.phase);
+            // --- HTML STRUCTURE ---
+            // 1. Date Number (Top Left)
+            // 2. Emoji (Top Right)
+            // 3. Details (Center)
             
-            const eventDiv = document.createElement('div');
-            eventDiv.classList.add('event');
+            let detailsHTML = '';
             
-            if (styleClass) eventDiv.classList.add(styleClass);
-            
-            if((eventData.activity||'').toLowerCase().includes('rest')) eventDiv.classList.add('evt-rest');
-            else if ((eventData.activity||'').toLowerCase().includes('outing')) eventDiv.classList.add('evt-outing');
-            else eventDiv.classList.add('evt-workout');
+            if (type === 'workout') {
+                // Show Activity, Speed, Duration
+                detailsHTML = `
+                    <div class="act-title">${eventData.activity}</div>
+                    <div class="act-detail">${eventData.speed}</div>
+                    <div class="act-detail">${eventData.duration}</div>
+                `;
+            } else {
+                // REST or OUTING (Just Title)
+                detailsHTML = `
+                    <div class="act-title" style="font-size:1rem; margin-top:5px;">${eventData.activity.toUpperCase()}</div>
+                `;
+            }
 
-            eventDiv.innerHTML = `<span>${icon} ${eventData.activity}</span> <span class="phase-icon">${phaseIcon}</span>`;
-            eventDiv.addEventListener('click', () => openModal(eventData, dayString));
-            
-            daySquare.appendChild(eventDiv);
-        });
-
-        calendar.appendChild(daySquare);
-    }
-}
-
-// 5. Modal
-function openModal(data, dateStr) {
-    document.getElementById('modal-date').innerText = new Date(dateStr).toDateString();
-    document.getElementById('m-phase').innerText = data.phase;
-    document.getElementById('m-activity').innerText = data.activity;
-    document.getElementById('m-speed').innerText = data.speed;
-    document.getElementById('m-duration').innerText = data.duration;
-    document.getElementById('m-notes').innerText = data.notes;
-    modal.classList.remove('hidden');
-}
-
-document.getElementById('close-modal').addEventListener('click', () => modal.classList.add('hidden'));
-window.onclick = function(event) { if (event.target == modal) modal.classList.add('hidden'); }
-
-document.getElementById('next-btn').addEventListener('click', () => { nav++; renderCalendar(); });
-document.getElementById('prev-btn').addEventListener('click', () => { nav--; renderCalendar(); });
-
-loadData();
+            daySquare.innerHTML = `
+                <div class="day-num">${i}</div>
+                <div class="day-emoji">${icon}</div>
+                <div class="day-content">
+                    ${detailsHTML}
