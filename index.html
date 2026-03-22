@@ -1,3 +1,4 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,32 +9,19 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-
     <div class="main-container">
-        <!-- Header: Month Navigation & Add Button -->
         <header>
             <div class="nav-controls">
                 <button id="prev-btn" class="nav-btn">&lt;</button>
                 <h2 id="month-display">Loading...</h2>
                 <button id="next-btn" class="nav-btn">&gt;</button>
             </div>
-            
-            <a href="https://docs.google.com/forms/d/e/1FAIpQLSf0kgx8-_peGyb-uBnv-DFlF6B-PNqlqg7KIKjxq69WxrfudQ/viewform" target="_blank" class="add-btn">
-                + Add Entry
-            </a>
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLSf0kgx8-_peGyb-uBnv-DFlF6B-PNqlqg7KIKjxq69WxrfudQ/viewform" target="_blank" class="add-btn">+ Add Entry</a>
         </header>
-
-        <!-- Days of Week Header -->
         <div class="calendar-header">
             <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
         </div>
-
-        <!-- The Calendar Grid -->
-        <div id="calendar-grid" class="calendar-grid">
-            <!-- JavaScript will inject days here -->
-        </div>
-
-        <!-- Details Modal (Hidden by default, shows when a day is clicked) -->
+        <div id="calendar-grid" class="calendar-grid"></div>
         <div id="event-modal" class="modal hidden">
             <div class="modal-content">
                 <span id="close-modal" class="close">&times;</span>
@@ -48,7 +36,6 @@
             </div>
         </div>
     </div>
-
     <script src="script.js"></script>
 </body>
 </html>
